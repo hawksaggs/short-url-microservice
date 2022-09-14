@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  db:
+    build: ./database-service
+    command: --default-authentication-plugin=mysql_native_password
+    container_name: mysqldb
+    env_file:
+      - ./database-service/.database.env
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - '3500:3306'
+
+  myrabbitmq:
+    image: 'rabbitmq:3.10.7-management'
+    hostname: my-rabbit
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+
+  management:
+    build: ./management-service
+    ports:
+      - '8081:3000'
+    volumes:
+      - ./management-service/src:/nodeapp/src
+    depends_on:
+      - db
+      - myrabbitmq
+    env_file:
+      - ./management-service/.management.env
+
+  redirection:
+    build: ./redirection-service
+    ports:
+      - '8082:3000'
+    volumes:
+      - ./redirection-service/src:/nodeapp/src
+    depends_on:
+      - myrabbitmq
+    env_file:
+      - ./redirection-service/.redirection.env
+
+  redis-store:
+    image: "redis:7"
+    ports:
+      - "6379:6379"
+    expose:
+      - 6379
+volumes:
+  mysql-data:
